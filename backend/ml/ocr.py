@@ -13,7 +13,15 @@ def run_ocr_with_bboxes(image: np.ndarray, lang: str = "eng+hin") -> Dict[str, A
     else:
         rgb = image
         
-    data = pytesseract.image_to_data(rgb, lang=lang, output_type=pytesseract.Output.DICT)
+    try:
+        data = pytesseract.image_to_data(rgb, lang=lang, output_type=pytesseract.Output.DICT)
+    except Exception as e:
+        # Fallback if tesseract binary is not installed on the system (e.g. Render/cloud runner)
+        return {
+            "value": "",
+            "confidence": 0.0,
+            "bboxes": []
+        }
     
     text_parts = []
     confidences = []
