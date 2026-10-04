@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import NavBar from '@/components/NavBar';
 import { useRouter } from 'next/navigation';
+import { getApiBaseUrl } from '@/lib/api';
 
 const FULL_2011_RULES = [
   { id: 'Rule 1', name: 'Short title and commencement', desc: 'Establishes the Legal Metrology (Packaged Commodities) Rules, 2011.' },
@@ -56,7 +57,7 @@ export default function RulesPage() {
     const fetchRules = async () => {
       try {
         const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-        const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+        const API = getApiBaseUrl();
         const res = await fetch(`${API}/admin/rules`, {
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });

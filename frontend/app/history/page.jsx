@@ -3,8 +3,9 @@ import { useEffect, useState, useCallback } from 'react';
 import NavBar from '@/components/NavBar';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { getApiBaseUrl } from '@/lib/api';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const API = getApiBaseUrl();
 
 // ─── Delete Confirm Modal ─────────────────────────────────────────────────────
 function DeleteModal({ onConfirm, onCancel }) {

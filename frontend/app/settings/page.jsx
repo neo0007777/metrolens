@@ -5,6 +5,7 @@ import NavBar from '@/components/NavBar';
 import { triggerHaptic } from '@/utils/haptics';
 import { LogOut, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { getApiBaseUrl } from '@/lib/api';
 
 const RULES_VERSION = 'v1.4 — LM(PC) Rules 2011, Amendment 2022';
 const APP_VERSION   = '2.5.0';
@@ -35,7 +36,7 @@ export default function SettingsPage() {
     e.preventDefault();
     setIsProvisioning(true);
     try {
-      const res = await fetch(process.env.NEXT_PUBLIC_API_URL + '/auth/provision-officer', {
+      const res = await fetch(`${getApiBaseUrl()}/auth/provision-officer`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

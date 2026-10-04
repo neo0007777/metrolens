@@ -3,6 +3,7 @@ import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import NavBar from '../../../components/NavBar';
 import { toast } from 'sonner';
+import { getApiBaseUrl, getApiRootUrl } from '@/lib/api';
 
 
 
@@ -138,7 +139,8 @@ export default function ResultsPage({ params }) {
   const [noticeOfficerName, setNoticeOfficerName] = useState('');
   const [noticeOfficerCircle, setNoticeOfficerCircle] = useState('Circle IV (South-East), New Delhi');
 
-  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+  const API = getApiBaseUrl();
+  const API_ROOT = getApiRootUrl();
 
   useEffect(() => {
     let isMounted = true;
@@ -481,7 +483,8 @@ export default function ResultsPage({ params }) {
         const json = await res.json();
         const fileUrl = json.data?.file_url;
         if (fileUrl) {
-          const dlRes = await fetch(`${API.replace('/api/v1', '')}${fileUrl}?t=${Date.now()}`, {
+          const cleanFileUrl = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
+          const dlRes = await fetch(`${API_ROOT}${cleanFileUrl}?t=${Date.now()}`, {
             headers: { 'Authorization': `Bearer ${sessionStorage.getItem('token')}` }
           });
           if (dlRes.ok) {
@@ -503,7 +506,7 @@ export default function ResultsPage({ params }) {
 
   const downloadCSV = async () => {
     try {
-      const res = await fetch(`${API.replace('/api/v1', '')}/api/v1/inspections/${report.id}/csv`, {
+      const res = await fetch(`${API}/inspections/${report.id}/csv`, {
         headers: { 'Authorization': `Bearer ${sessionStorage.getItem('token')}` }
       });
       if (!res.ok) throw new Error('Failed');
@@ -612,7 +615,7 @@ export default function ResultsPage({ params }) {
     if (img.startsWith('http') || img.startsWith('data:') || img.startsWith('blob:') || img.startsWith('/')) {
       return img;
     }
-    return API.replace('/api/v1', '') + '/' + img;
+    return `${API_ROOT}/${img.replace(/^\/+/, '')}`;
   });
 
   const evidenceSrc = normalizedImages[0];

@@ -36,8 +36,25 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     yield
 
+import re
+
+class NormalizePathASGIMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            path = scope.get("path", "")
+            if "//" in path:
+                normalized = re.sub(r"/+", "/", path)
+                scope["path"] = normalized
+                if "raw_path" in scope:
+                    scope["raw_path"] = normalized.encode("latin-1")
+        await self.app(scope, receive, send)
+
 app = FastAPI(title="MetroLens API", version="1.0.0", lifespan=lifespan)
 
+app.add_middleware(NormalizePathASGIMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -46,6 +63,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Standard v1 routes
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(inspections_router, prefix="/api/v1/inspections", tags=["inspections"])
 app.include_router(reports_router, prefix="/api/v1/inspections", tags=["reports"])
@@ -54,6 +72,16 @@ app.include_router(ecommerce_router, prefix="/api/v1/ecommerce", tags=["ecommerc
 app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin"])
 app.include_router(dashboard_router, prefix="/api/v1/dashboard", tags=["dashboard"])
 app.include_router(inspections_ui_router, prefix="/api/v1/inspections", tags=["inspections_ui"])
+
+# Direct legacy / root compatibility mounts
+app.include_router(auth_router, prefix="/auth", tags=["auth-compat"])
+app.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard-compat"])
+app.include_router(inspections_router, prefix="/inspections", tags=["inspections-compat"])
+app.include_router(reports_router, prefix="/inspections", tags=["reports-compat"])
+app.include_router(enforcement_router, prefix="/inspections", tags=["enforcement-compat"])
+app.include_router(ecommerce_router, prefix="/ecommerce", tags=["ecommerce-compat"])
+app.include_router(admin_router, prefix="/admin", tags=["admin-compat"])
+app.include_router(inspections_ui_router, prefix="/inspections", tags=["inspections_ui-compat"])
 
 @app.get("/health")
 async def health_check():

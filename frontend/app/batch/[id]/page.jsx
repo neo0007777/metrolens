@@ -5,6 +5,7 @@ import DynamicLoader from '@/components/DynamicLoader';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Package, AlertTriangle } from 'lucide-react';
+import { getApiBaseUrl } from '@/lib/api';
 
 export default function BatchPage({ params }) {
   const [batch, setBatch] = useState(null);
@@ -12,7 +13,7 @@ export default function BatchPage({ params }) {
   const [resolvedParams, setResolvedParams] = useState(null);
   const router = useRouter();
   
-  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+  const API = getApiBaseUrl();
 
   useEffect(() => {
     params.then(p => setResolvedParams(p));

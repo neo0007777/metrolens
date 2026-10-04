@@ -7,8 +7,9 @@ import { openDB } from 'idb';
 import NavBar from '@/components/NavBar';
 import DynamicLoader from '@/components/DynamicLoader';
 import { X, AlertTriangle } from 'lucide-react';
+import { getApiBaseUrl } from '@/lib/api';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const API = getApiBaseUrl();
 
 export default function UploadPage() {
   const router = useRouter();

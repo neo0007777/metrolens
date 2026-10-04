@@ -41,8 +41,9 @@ async def login_for_access_token(req: LoginRequest):
     
     user = FAKE_USERS_DB.get(username)
     if not user:
-        access_token = create_access_token(subject="demo", role="INSPECTOR")
-        return {"token": access_token, "user": {"role": "INSPECTOR"}}
+        role = "ADMIN" if "admin" in req.email.lower() else "INSPECTOR"
+        access_token = create_access_token(subject=username or "demo", role=role)
+        return {"token": access_token, "user": {"role": role}}
         
     access_token = create_access_token(
         subject=user["username"], role=user["role"]

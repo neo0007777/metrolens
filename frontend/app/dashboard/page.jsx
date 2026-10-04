@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import NavBar from '@/components/NavBar';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getApiBaseUrl } from '@/lib/api';
 import { 
   Building2, CheckCircle2, AlertTriangle, FileText, ArrowUpRight, 
   TrendingUp, AlertOctagon, Scale, Shield, Calendar, MapPin, Eye,
@@ -25,7 +26,7 @@ export default function Dashboard() {
     const fetchStats = async () => {
       try {
         const token = sessionStorage.getItem('token');
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/dashboard/stats`, {
+        const res = await fetch(`${getApiBaseUrl()}/dashboard/stats`, {
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
         if (!res.ok) throw new Error('API Error');

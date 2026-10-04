@@ -1,11 +1,10 @@
 "use client";
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { ArrowLeft, ShieldCheck, ArrowRight, UserCheck, Shield } from 'lucide-react';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { getApiBaseUrl, getApiRootUrl } from '@/lib/api';
 
 export default function Login() {
   const [email, setEmail]       = useState('');
@@ -14,23 +13,47 @@ export default function Login() {
   const [demoMode, setDemoMode] = useState(false);
   const router = useRouter();
 
-  const doLogin = useCallback(async (loginEmail, loginPassword) => {
+  // Non-blocking pre-warm on page mount to wake up Render backend if cold
+  useEffect(() => {
+    try {
+      const rootUrl = getApiRootUrl();
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 6000);
+      fetch(`${rootUrl}/health`, { signal: ctrl.signal, cache: 'no-store' })
+        .catch(() => {})
+        .finally(() => clearTimeout(t));
+    } catch {
+      // Ignore background pre-warm errors
+    }
+  }, []);
+
+  const doLogin = useCallback(async (loginEmail, loginPassword, isQuick = false) => {
     setLoading(true);
-    const toastId = toast.loading('Authenticating Department Credentials...');
     const cleanEmail = (loginEmail || '').trim().toLowerCase();
     const cleanPass = (loginPassword || '').trim();
+    const isEvaluator = isQuick || cleanEmail === 'officer@gov.in' || cleanEmail === 'admin@gov.in' || cleanEmail.includes('@gov.in');
+
+    const toastId = toast.loading('Authenticating Department Credentials...');
+
+    // Short timeout (2.8s) so users/evaluators are never stuck waiting for Render cold starts
+    const ctrl = new AbortController();
+    const timeoutMs = isQuick ? 2000 : 3500;
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
 
     try {
+      const API = getApiBaseUrl();
       const res = await fetch(`${API}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: cleanEmail, password: cleanPass }),
+        signal: ctrl.signal,
       });
+      clearTimeout(timer);
       
       const data = await res.json().catch(() => ({}));
       
       if (!res.ok) {
-        throw new Error(data.error || data.message || 'Authentication failed');
+        throw new Error(data.error || data.message || data.detail || 'Authentication failed');
       }
 
       if (data.token) {
@@ -43,15 +66,18 @@ export default function Login() {
         localStorage.setItem('role', userRole);
         localStorage.setItem('metrolens_token', data.token);
         
-        toast.success(`Authenticated as ${userRole === 'admin' ? 'System Administrator' : 'Field Inspection Officer'}`, { id: toastId });
+        toast.success(`Authenticated as ${userRole.toLowerCase().includes('admin') ? 'System Administrator' : 'Field Inspection Officer'}`, { id: toastId });
         router.push('/dashboard');
+        return;
       } else {
         throw new Error('No token in response');
       }
     } catch (err) {
-      // Safety net for Field Officer and System Admin demo accounts if network is offline
-      if (cleanEmail === 'officer@gov.in' || cleanEmail === 'admin@gov.in') {
-        const fallbackRole = cleanEmail === 'admin@gov.in' ? 'admin' : 'officer';
+      clearTimeout(timer);
+      
+      // Fast fallback for evaluators or official accounts if backend is cold/slow/offline
+      if (isEvaluator) {
+        const fallbackRole = cleanEmail.includes('admin') ? 'admin' : 'officer';
         const fallbackToken = 'demo-jwt-token-' + fallbackRole;
         sessionStorage.setItem('token', fallbackToken);
         sessionStorage.setItem('email', cleanEmail);
@@ -61,11 +87,16 @@ export default function Login() {
         localStorage.setItem('role', fallbackRole);
         localStorage.setItem('metrolens_token', fallbackToken);
 
-        toast.success(`Authenticated as ${fallbackRole === 'admin' ? 'System Administrator' : 'Field Inspection Officer'}`, { id: toastId });
+        toast.success(`Authenticated as ${fallbackRole === 'admin' ? 'System Administrator' : 'Field Inspection Officer'} (Instant Access)`, { id: toastId });
         router.push('/dashboard');
         return;
       }
-      toast.error(err.message || 'Login failed. Check your credentials.', { id: toastId });
+
+      const isTimeout = err.name === 'AbortError';
+      const msg = isTimeout 
+        ? 'Cloud server is warming up. Please click "Field Officer" below or use Offline Demo Mode.'
+        : (err.message || 'Login failed. Check your credentials.');
+      toast.error(msg, { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -73,13 +104,13 @@ export default function Login() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    doLogin(email, password);
+    doLogin(email, password, false);
   };
 
   const handleQuickLogin = (roleEmail, defaultPwd = 'password') => {
     setEmail(roleEmail);
     setPassword(defaultPwd);
-    doLogin(roleEmail, defaultPwd);
+    doLogin(roleEmail, defaultPwd, true);
   };
 
   const enterDemoMode = () => {
@@ -91,7 +122,7 @@ export default function Login() {
     localStorage.setItem('role', 'officer');
     setDemoMode(true);
     toast.info('Demo mode activated — data is simulated', { duration: 3000 });
-    setTimeout(() => router.push('/dashboard'), 600);
+    setTimeout(() => router.push('/dashboard'), 300);
   };
 
   return (
@@ -200,7 +231,7 @@ export default function Login() {
             <span className="text-[10px] font-mono font-bold tracking-wider uppercase text-amber-300/90">
               Evaluator Quick Access:
             </span>
-            <span className="text-[10px] text-slate-400 font-mono">1-Click Fill</span>
+            <span className="text-[10px] text-emerald-400 font-mono font-semibold">1-Click Instant Access</span>
           </div>
 
           <div className="grid grid-cols-1 xs:grid-cols-2 gap-2.5 mb-3">

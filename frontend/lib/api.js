@@ -9,7 +9,22 @@
 //   - New: rules endpoint, report generation
 // ============================================================
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+export function getApiBaseUrl() {
+  const raw = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1').trim();
+  const clean = raw.replace(/\/+$/, '');
+  if (clean.endsWith('/api/v1')) {
+    return clean;
+  }
+  return `${clean}/api/v1`;
+}
+
+export function getApiRootUrl() {
+  return getApiBaseUrl().replace(/\/api\/v1$/, '');
+}
+
+export const BASE_URL = getApiBaseUrl();
+export const API_BASE = BASE_URL;
+export const API_ROOT = getApiRootUrl();
 
 // ─── AUTH TOKEN ──────────────────────────────────────────────────────────────
 function getToken() {
@@ -29,7 +44,9 @@ async function apiFetch(endpoint, options = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const res = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
+  const base = getApiBaseUrl();
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const res = await fetch(`${base}${cleanEndpoint}`, { ...options, headers });
 
   // Parse response body
   let body;
